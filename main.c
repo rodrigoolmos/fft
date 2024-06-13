@@ -4,9 +4,9 @@
 #include <math.h>
 #include <string.h>
 
-#define PI 3.14159265358979323846
-#define DIM 1024
-#define EPSILON 0.2
+#define PI M_PI
+#define DIM 512
+#define EPSILON 0.002
 
 typedef struct {
     float real;
@@ -34,7 +34,7 @@ void FFT(Complex *x, int N) {
 
     // Algoritmo de la mariposa
     for (len = 2; len <= N; len <<= 1) {
-        angle = 2 * PI / len;
+        angle = - 2 * PI / len;
         wlen.real = cos(angle);
         wlen.imag = sin(angle);
         for (i = 0; i < N; i += len) {
@@ -61,7 +61,7 @@ void DFT(Complex *input, Complex *output, int N) {
         output[k].real = 0;
         output[k].imag = 0;
         for (int n = 0; n < N; n++) {
-            float angle = 2 * PI * k * n / N;
+            float angle = - 2 * PI * k * n / N;
             output[k].real += input[n].real * cos(angle) - input[n].imag * sin(angle);
             output[k].imag += input[n].imag * cos(angle) + input[n].real * sin(angle);
         }
@@ -70,15 +70,13 @@ void DFT(Complex *input, Complex *output, int N) {
 
 int main() {
     int N = DIM;  // Número de puntos
-    int error = 0;
-    double real_des, real_max;
-    double imag_des, imag_max;
+    float dif, total_dif;
 
     // Array de entrada de ejemplo (DIM puntos)
     Complex input[DIM];
     for (int i = 0; i < N; i++) {
-        input[i].real = (float)rand() * 0.456;
-        input[i].imag = (float)rand() * 0.345;
+        input[i].real = 5*sin(2*PI*i/12) + 3*sin(2*PI*i/43) + 2*sin(2*PI*i/54);
+        input[i].imag = 3*sin(2*PI*i/61) + 6*sin(2*PI*i/23) + 8*sin(2*PI*i/14);
     }
 
     Complex outputDFT[DIM];
@@ -90,34 +88,45 @@ int main() {
     clock_t start = clock();
     DFT(input, outputDFT, N);
     clock_t end = clock();
-    printf("Tiempo de ejecución de la DFT: %f segundos\n", (double) (end - start) / CLOCKS_PER_SEC);
+    //printf("Tiempo de ejecución de la DFT: %f segundos\n", (double) (end - start) / CLOCKS_PER_SEC);
 
     start = clock();
     FFT(outputFFT, N);  // La función FFT modifica outputFFT en su lugar
     end = clock();
-    printf("Tiempo de ejecución de la FFT: %f segundos\n", (double) (end - start) / CLOCKS_PER_SEC);
+    //printf("Tiempo de ejecución de la FFT: %f segundos\n", (double) (end - start) / CLOCKS_PER_SEC);
 
-    real_max = 0;
-    imag_max = 0;
+    total_dif = 0;
     for (int i = 0; i < N; i++) {
-        real_des = fabs((outputFFT[i].real - outputDFT[i].real) / outputDFT[i].real);
-        imag_des = fabs((outputFFT[i].imag - outputDFT[i].imag) / outputDFT[i].imag);
-        if(real_des > EPSILON || imag_des > EPSILON)
-            error = 1;
 
-        if(real_max < real_des)
-            real_max = real_des;
-        if (imag_max < imag_des)
-            imag_max = imag_des;        
+        dif = fabs(sqrtf((outputFFT[i].real * outputFFT[i].real) + (outputFFT[i].imag * outputFFT[i].imag)) -
+              sqrtf((outputDFT[i].real * outputDFT[i].real) + (outputDFT[i].imag * outputDFT[i].imag)));
+
+        total_dif += dif;
     }
 
-    if(error){
-        printf("ERR\n");
-    } else {
-        printf("OK\n");
+    printf("Input = single([");
+    for (int e = 0; e < N; e++) {
+        printf("%f + i*%f, ", input[e].real, input[e].imag);
+    
     }
+    printf("]);\n");
 
-    printf("MAX DIF REAL %f MAX DIF IMAG %f\n", real_max, imag_max);
+    printf("outputFFT = single([");
+    for (int e = 0; e < N; e++) {
+        printf("%f + i*%f, ", outputFFT[e].real, outputFFT[e].imag);
+    
+    }
+    printf("]);\n");
+
+    printf("outputDFT = single([");
+    for (int e = 0; e < N; e++) {
+        printf("%f + i*%f, ", outputDFT[e].real, outputDFT[e].imag);
+    
+    }
+    printf("]);\n");
+
+
+    printf("MAX SUM DIF %f\n", total_dif);
 
     return 0;
 }
